@@ -400,7 +400,7 @@ Panel {
             fontFamily: root.fontFamily
             iconComponent: Component {
               Text {
-                text: "󰐼"
+                text: "\uEF60" // nf-fa-satellite-dish; md-radar's old codepoint is radioactive in Nerd Fonts 3
                 color: root.fg
                 font.family: root.fontFamily
                 font.pixelSize: root.fontDisplay
