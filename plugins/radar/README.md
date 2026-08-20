@@ -20,7 +20,7 @@ That places it in the center section, after the built-in weather widget.
 
 - Left click: open or close the popover
 - Middle click: refresh the loop
-- Click the station name: search by id, name, or state
+- Click the station name: search NEXRAD (WSR-88D) sites by id or name
 - Scroll the loop: zoom toward the cursor
 - Drag when zoomed: pan
 - Double-click the loop, or `0`: reset zoom
@@ -35,7 +35,7 @@ The chosen station is stored in `~/.local/state/omarchy/settings/wes-radar.json`
 - Loop: `https://radar.weather.gov/ridge/standard/<STATION>_loop.gif` (WSR-88D only)
 - Stations: `https://api.weather.gov/radar/stations`
 
-Airport TDWR sites such as TTPA have no RIDGE loop. Search lists NEXRAD (WSR-88D) sites, and a TDWR pick is remapped to the nearest one (TTPA → KTBW Tampa).
+Search and typing a station id only accept WSR-88D sites. Airport TDWR (TTPA) and profilers are omitted because RIDGE does not publish loops for them.
 
 NWS asks that automated access send a User-Agent with contact info. The plugin does.
 

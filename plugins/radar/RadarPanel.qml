@@ -139,24 +139,27 @@ Panel {
 
   function applyResolvedStation() {
     var s = Model.stationById(stations, stationId)
-    if (!s) return
-    var source = Model.loopSource(s, stations)
-    if (source && source.id !== stationId) {
-      stationId = source.id
-      stationName = source.name || source.id
-      label = source.id
+    if (s && Model.isWsr88d(s)) {
+      var nextName = s.name || stationId
+      if (nextName === stationName) return
+      stationName = nextName
       persistStation()
-      refresh()
       return
     }
-    var nextName = s.name || stationId
-    if (nextName === stationName) return
-    stationName = nextName
+    if (!stations.length) return
+    var fallback = s
+      ? Model.nearestWsr(stations, s.latitude, s.longitude)
+      : Model.stationById(stations, "KFCX")
+    if (!fallback || fallback.id === stationId) return
+    stationId = fallback.id
+    stationName = fallback.name || fallback.id
+    label = fallback.id
     persistStation()
+    refresh()
   }
 
   function chooseStation(s) {
-    if (!s) return
+    if (!s || !Model.isWsr88d(s)) return
     stationId = s.id
     stationName = s.name || s.id
     label = s.id

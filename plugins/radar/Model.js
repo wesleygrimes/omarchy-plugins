@@ -100,12 +100,6 @@ function nearestWsr(stations, latitude, longitude) {
   return best
 }
 
-function loopSource(station, stations) {
-  if (!station) return null
-  if (isWsr88d(station)) return station
-  return nearestWsr(stations, station.latitude, station.longitude) || station
-}
-
 function loopUrl(stationId, revision) {
   return "https://radar.weather.gov/ridge/standard/"
     + String(stationId || "KFCX")
@@ -151,15 +145,15 @@ function resolveSearch(stations, suggestions, selectedIndex, query) {
   var typed = String(query || "").replace(/^\s+|\s+$/g, "")
   var code = typed.toUpperCase()
   var exact = /^[A-Z]{4}$/.test(code) ? stationById(stations, code) : null
-  if (exact) return exact
+  if (exact && isWsr88d(exact)) return exact
 
   var list = suggestions || []
   if (list.length) {
     var index = Math.max(0, Math.min(parseInt(selectedIndex, 10) || 0, list.length - 1))
-    return list[index] || list[0]
+    var pick = list[index] || list[0]
+    if (pick && isWsr88d(pick)) return pick
   }
 
-  if (/^[A-Z]{4}$/.test(code)) return { id: code, name: code }
   return null
 }
 
