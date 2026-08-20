@@ -108,9 +108,26 @@ function viewerSettings(stationId, longitude, latitude) {
 }
 
 function stationById(stations, stationId) {
+  var code = String(stationId || "").toUpperCase()
   for (var i = 0; i < stations.length; i++) {
-    if (stations[i].id === stationId) return stations[i]
+    if (stations[i].id === code) return stations[i]
   }
+  return null
+}
+
+function resolveSearch(stations, suggestions, selectedIndex, query) {
+  var typed = String(query || "").replace(/^\s+|\s+$/g, "")
+  var code = typed.toUpperCase()
+  var exact = /^[A-Z]{4}$/.test(code) ? stationById(stations, code) : null
+  if (exact) return exact
+
+  var list = suggestions || []
+  if (list.length) {
+    var index = Math.max(0, Math.min(parseInt(selectedIndex, 10) || 0, list.length - 1))
+    return list[index] || list[0]
+  }
+
+  if (/^[A-Z]{4}$/.test(code)) return { id: code, name: code }
   return null
 }
 

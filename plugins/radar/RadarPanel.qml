@@ -159,13 +159,7 @@ Panel {
   }
 
   function chooseSearchStation() {
-    var typed = String(searchText || "").toUpperCase().replace(/^\s+|\s+$/g, "")
-    if (/^[A-Z]{4}$/.test(typed)) {
-      chooseStation({ id: typed, name: typed })
-      return
-    }
-    var index = stationList.currentIndex >= 0 ? stationList.currentIndex : 0
-    if (suggestions.length) chooseStation(suggestions[index])
+    chooseStation(Model.resolveSearch(stations, suggestions, stationList.currentIndex, searchText))
   }
 
   function currentStation() {
