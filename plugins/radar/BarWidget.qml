@@ -16,6 +16,9 @@ BarWidget {
   function close() { radarPanel.close() }
   function closeForPopoutSwitch() { radarPanel.closeForPopoutSwitch() }
 
+  readonly property int iconFont: Style.barToken("icon-font", 13)
+  readonly property int fontBody: Style.fontToken("body", Style.fontPx(1.0))
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -57,7 +60,7 @@ BarWidget {
         text: Model.iconGlyph()
         color: button.foreground
         font.family: button.fontFamily
-        font.pixelSize: Style.bar.iconFont
+        font.pixelSize: root.iconFont
         anchors.verticalCenter: parent.verticalCenter
       }
 
@@ -65,7 +68,7 @@ BarWidget {
         text: radarPanel.label
         color: button.foreground
         font.family: button.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: root.fontBody
         anchors.verticalCenter: parent.verticalCenter
       }
     }
@@ -76,7 +79,7 @@ BarWidget {
       text: Model.iconGlyph()
       color: button.foreground
       font.family: button.fontFamily
-      font.pixelSize: Style.bar.iconFont
+      font.pixelSize: root.iconFont
     }
   }
 }
