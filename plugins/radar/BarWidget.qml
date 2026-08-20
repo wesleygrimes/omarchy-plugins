@@ -1,65 +1,36 @@
 import QtQuick
-import qs.Commons
 import qs.Ui
 
 BarWidget {
   id: root
   moduleName: "wes.radar"
 
-  function injectPanel() {
-    var target = panelLoader.item
-    if (!target) return
-    if ("bar" in target) target.bar = root.bar
-    if ("settings" in target) target.settings = root.settings
-    if ("anchorItem" in target) target.anchorItem = button
-    if ("hostWidget" in target) target.hostWidget = root
-  }
+  readonly property bool opened: radarPanel.opened
+  readonly property bool popoutSwitchClosing: radarPanel.popoutSwitchClosing
 
-  function refresh() {
-    if (panelLoader.item && panelLoader.item.refresh) panelLoader.item.refresh()
-  }
-
-  function togglePanel() {
-    if (panelLoader.item && panelLoader.item.toggle) panelLoader.item.toggle()
-  }
-
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
-  readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
-
-  function open() {
-    if (panelLoader.item && panelLoader.item.openFromHotkey) panelLoader.item.openFromHotkey()
-  }
-
-  function close() {
-    if (panelLoader.item && panelLoader.item.close) panelLoader.item.close()
-  }
-
-  function closeForPopoutSwitch() {
-    if (panelLoader.item) panelLoader.item.closeForPopoutSwitch()
-  }
+  function refresh() { radarPanel.refresh() }
+  function togglePanel() { radarPanel.toggle() }
+  function open() { radarPanel.openFromHotkey() }
+  function close() { radarPanel.close() }
+  function closeForPopoutSwitch() { radarPanel.closeForPopoutSwitch() }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  onBarChanged: injectPanel()
-  onSettingsChanged: injectPanel()
-
-  Loader {
-    id: panelLoader
-    active: true
-    source: Qt.resolvedUrl("Panel.qml")
+  RadarPanel {
+    id: radarPanel
     visible: false
-    onLoaded: {
-      root.injectPanel()
-      Qt.callLater(root.injectPanel)
-    }
+    bar: root.bar
+    settings: root.settings
+    anchorItem: button
+    hostWidget: root
   }
 
   WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: panelLoader.item ? panelLoader.item.label : "KFCX"
+    text: radarPanel.label
     horizontalMargin: 8.75
     verticalPadding: 8.75
     tooltipText: ""

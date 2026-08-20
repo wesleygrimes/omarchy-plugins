@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -30,8 +30,10 @@ Panel {
   property bool editingStation: false
   property bool hasSavedStation: false
 
-  readonly property color fg: bar ? bar.foreground : Color.foreground
-  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+  readonly property color fg: root.barForeground
+  readonly property string fontFamily: Style.fontFamily
+  readonly property int fontCaption: Style.fontToken("caption", Style.fontPx(0.833))
+  readonly property int fontBody: Style.fontToken("body", Style.fontPx(1.0))
   readonly property real radarHeight: Math.round(Style.space(380) * 550 / 600)
 
   function open() {
@@ -67,15 +69,19 @@ Panel {
     else openFromHotkey()
   }
 
+  function barProperty(name) {
+    return root.bar ? root.bar[name] : undefined
+  }
+
   function switchPanel(direction) {
-    if (root.bar && typeof root.bar.switchPanelFrom === "function")
-      return root.bar.switchPanelFrom(root.barIdentity, direction)
-    return false
+    var fn = barProperty("switchPanelFrom")
+    if (typeof fn !== "function") return false
+    return fn.call(root.bar, root.barIdentity, direction)
   }
 
   function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
-      root.bar.centerHoverRevealSuppressed = value
+    if (barProperty("centerHoverRevealSuppressed") === undefined) return
+    root.bar["centerHoverRevealSuppressed"] = value
   }
 
   function refresh() {
@@ -256,7 +262,7 @@ Panel {
               color: root.fg
               font.family: root.fontFamily
               font.bold: true
-              font.pixelSize: Style.font.caption
+              font.pixelSize: root.fontCaption
             }
 
             Text {
@@ -264,7 +270,7 @@ Panel {
               text: root.stationName + "  ·  " + root.stationId
               color: root.fg
               font.family: root.fontFamily
-              font.pixelSize: Style.font.body
+              font.pixelSize: root.fontBody
               elide: Text.ElideRight
             }
           }
@@ -319,23 +325,26 @@ Panel {
           model: root.suggestions
           currentIndex: root.suggestions.length ? 0 : -1
           delegate: Rectangle {
-            width: stationList.width
+            id: stationRow
+            required property var modelData
+            required property int index
+            width: ListView.view.width
             height: Style.space(34)
-            color: (stationList.currentIndex === index || mouse.containsMouse) ? Color.accent : "transparent"
+            color: (ListView.view.currentIndex === index || mouse.containsMouse) ? Color.accent : "transparent"
 
             Row {
               anchors.fill: parent
               anchors.margins: Style.space(6)
               spacing: Style.space(10)
               Text {
-                text: modelData.id
+                text: stationRow.modelData.id
                 color: root.fg
                 font.family: root.fontFamily
                 font.bold: true
                 width: Style.space(52)
               }
               Text {
-                text: modelData.name + (modelData.state ? " (" + modelData.state + ")" : "")
+                text: stationRow.modelData.name + (stationRow.modelData.state ? " (" + stationRow.modelData.state + ")" : "")
                 color: root.fg
                 font.family: root.fontFamily
                 elide: Text.ElideRight
@@ -347,7 +356,7 @@ Panel {
               id: mouse
               anchors.fill: parent
               hoverEnabled: true
-              onClicked: root.chooseStation(modelData)
+              onClicked: root.chooseStation(stationRow.modelData)
             }
           }
         }
@@ -398,7 +407,7 @@ Panel {
             text: root.errorText || "NWS RIDGE loop · click station to change"
             color: root.errorText ? Color.urgent : Color.muted
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: root.fontCaption
             elide: Text.ElideRight
           }
 
