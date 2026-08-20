@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Validate, reload, open, and capture a native Omarchy plugin for visual QA.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ARTIFACT_ROOT="${OMARCHY_PLUGIN_ARTIFACT_DIR:-$ROOT/.artifacts/plugin-ui}"
+
+usage() {
+  echo "Usage: bin/verify-ui <plugin-folder>" >&2
+  echo "Example: bin/verify-ui radar" >&2
+}
+
+fail() {
+  echo "verify-ui: $*" >&2
+  exit 1
+}
+
+(( $# == 1 )) || { usage; exit 2; }
+
+name="$1"
+plugin_dir="$ROOT/plugins/$name"
+[[ -d $plugin_dir ]] || fail "no plugin folder: $plugin_dir"
+[[ -f $plugin_dir/manifest.json ]] || fail "missing manifest.json in $plugin_dir"
+
+command -v jq >/dev/null 2>&1 || fail "jq is required"
+command -v rg >/dev/null 2>&1 || fail "ripgrep is required"
+command -v omarchy >/dev/null 2>&1 || fail "omarchy is required"
+command -v omarchy-shell >/dev/null 2>&1 || fail "omarchy-shell is required"
+
+plugin_id="$(jq -er '.id' "$plugin_dir/manifest.json")"
+run_stamp="$(date +'%Y%m%d-%H%M%S')"
+run_dir="$ARTIFACT_ROOT/$name-$run_stamp"
+started_at="$(date --iso-8601=seconds)"
+mkdir -p "$run_dir"
+
+echo "verify-ui: validating"
+"$ROOT/bin/check"
+
+echo "verify-ui: linking and enabling $plugin_id"
+"$ROOT/bin/install" "$name" --enable
+
+if ! omarchy-shell shell ping >"$run_dir/ping.txt" 2>&1; then
+  fail "omarchy-shell is unavailable in this session; visual verification was not performed"
+fi
+
+echo "verify-ui: forcing plugin reload"
+omarchy-shell shell rescanPlugins
+sleep 1
+
+omarchy-shell shell listPlugins >"$run_dir/plugins.json"
+if ! jq -e --arg id "$plugin_id" 'any(.[]; .id == $id)' "$run_dir/plugins.json" >/dev/null; then
+  fail "$plugin_id was not discovered after reload"
+fi
+
+echo "verify-ui: summoning $plugin_id"
+omarchy-shell shell summon "$plugin_id" '{}'
+sleep 2
+
+echo "verify-ui: capturing desktop"
+capture_path="$(OMARCHY_SCREENSHOT_DIR="$run_dir" omarchy capture screenshot fullscreen save)"
+[[ -n $capture_path && -f $capture_path ]] || fail "screenshot capture did not produce a file"
+
+journalctl --user --since "$started_at" --no-pager \
+  | rg -i "quickshell|omarchy-shell|qml|plugin|$plugin_id" \
+  >"$run_dir/shell.log" || true
+
+echo "verify-ui: screenshot: $capture_path"
+echo "verify-ui: log: $run_dir/shell.log"
+echo "verify-ui: inspect both files and capture every changed interaction state"

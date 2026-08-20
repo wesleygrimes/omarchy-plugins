@@ -23,9 +23,32 @@ Other machines, or a second Omarchy install, clone this repo and run `bin/instal
 
 ```sh
 bin/check                  # omarchy plugin validate on every plugin
+bin/verify-ui radar        # reload, summon, screenshot, and collect shell logs
 bin/uninstall [name]       # unlink without deleting this checkout
 bin/new short-name "Name"  # scaffold plugins/short-name as wes.short-name
 ```
+
+## Native UI verification
+
+Omarchy plugins are Qt Quick surfaces inside the long-running
+`omarchy-shell`; they are not browser pages, so Playwright cannot inspect their
+layout or console. Use the repository's native verification command after any
+QML or behavior change:
+
+```sh
+bin/verify-ui radar
+```
+
+It runs static validation, links and enables the plugin, forces a plugin
+rescan, summons the panel through shell IPC, takes a real fullscreen capture,
+and collects relevant user-journal output. Artifacts are written beneath
+`.artifacts/plugin-ui/` and intentionally ignored by git.
+
+The screenshot and `shell.log` must be inspected after the command finishes.
+Exercise and capture each state affected by the change; opening the default
+panel does not verify interactions such as search, loading, errors, or zoom.
+If the command reports that `omarchy-shell` is unavailable, visual QA did not
+happen and must not be claimed as complete.
 
 ## VS Code / qmlls
 
@@ -49,7 +72,7 @@ Keep these small. Add process only when a second plugin actually needs it.
 2. **IDs are `wes.<short-name>`.** Never `omarchy.*`. That namespace is reserved.
 3. **Look like Omarchy.** Bar popovers use `BarWidget` + `Panel` + `KeyboardPanel`, `qs.Ui` / `qs.Commons`, and `Style.space(380)` unless the content truly cannot fit (clock and weather are the exceptions in first-party).
 4. **No extra daemons.** Prefer `curl`, files under `~/.local/state/omarchy/settings/`, and stock `omarchy` commands. Plugins run unsandboxed inside `omarchy-shell`.
-5. **Validate before commit.** `bin/check` must pass. `qmllint` the QML when you touch it.
+5. **Verify before commit.** `bin/check` must pass. QML or behavior changes also require `bin/verify-ui <plugin>` plus inspection of its screenshot and log.
 6. **Dogfood first.** Enable it here, use it for real, then publish. A public git repo is not a listing on omarchyplugins.com.
 7. **Publish as a dedicated repo.** Copy or `git subtree split -P plugins/<name>` into a repo whose root is the plugin. Submit only after it has been boring for a while.
 
