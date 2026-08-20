@@ -1,3 +1,7 @@
+function iconGlyph() {
+  return "\uEF60"
+}
+
 function parseConfig(raw) {
   var defaults = { station: "KFCX", name: "KFCX" }
   try {
