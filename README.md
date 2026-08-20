@@ -39,10 +39,10 @@ QML or behavior change:
 bin/verify-ui radar
 ```
 
-It runs static validation, links and enables the plugin, forces a plugin
-rescan, summons the panel through shell IPC, takes a real fullscreen capture,
-and collects relevant user-journal output. Artifacts are written beneath
-`.artifacts/plugin-ui/` and intentionally ignored by git.
+It runs static validation, links and enables the plugin, restarts the shell for
+a fresh component load, summons the panel through shell IPC, takes a real
+fullscreen capture, and collects relevant user-journal output. Artifacts are
+written beneath `.artifacts/plugin-ui/` and intentionally ignored by git.
 
 The screenshot and `shell.log` must be inspected after the command finishes.
 Exercise and capture each state affected by the change; opening the default

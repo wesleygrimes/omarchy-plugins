@@ -43,13 +43,22 @@ if ! omarchy-shell shell ping >"$run_dir/ping.txt" 2>&1; then
   fail "omarchy-shell is unavailable in this session; visual verification was not performed"
 fi
 
-echo "verify-ui: forcing plugin reload"
-omarchy-shell shell rescanPlugins
-sleep 1
+echo "verify-ui: restarting shell for a fresh component load"
+omarchy restart shell
+
+shell_ready=0
+for (( attempt = 0; attempt < 50; attempt++ )); do
+  if omarchy-shell shell ping >/dev/null 2>&1; then
+    shell_ready=1
+    break
+  fi
+  sleep 0.2
+done
+(( shell_ready )) || fail "omarchy-shell did not return after restart"
 
 omarchy-shell shell listPlugins >"$run_dir/plugins.json"
 if ! jq -e --arg id "$plugin_id" 'any(.[]; .id == $id)' "$run_dir/plugins.json" >/dev/null; then
-  fail "$plugin_id was not discovered after reload"
+  fail "$plugin_id was not discovered after shell restart"
 fi
 
 echo "verify-ui: summoning $plugin_id"

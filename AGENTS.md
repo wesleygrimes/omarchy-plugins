@@ -13,8 +13,9 @@ bin/verify-ui <plugin-folder>
 ```
 
 That command validates the plugins, links and enables the selected plugin,
-forces a plugin rescan, summons it, captures the real desktop, and saves the
-screenshot plus relevant journal output under `.artifacts/plugin-ui/`.
+restarts the shell for a fresh component load, summons it, captures the real
+desktop, and saves the screenshot plus relevant journal output under
+`.artifacts/plugin-ui/`.
 
 The agent must then:
 

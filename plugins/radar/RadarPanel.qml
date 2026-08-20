@@ -502,7 +502,8 @@ Panel {
         Rectangle {
           id: radarViewport
           width: parent.width
-          height: root.radarHeight
+          height: root.editingStation ? 0 : root.radarHeight
+          visible: !root.editingStation
           color: Color.background
           border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.12)
           clip: true
