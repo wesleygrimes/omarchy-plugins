@@ -27,6 +27,20 @@ bin/uninstall [name]       # unlink without deleting this checkout
 bin/new short-name "Name"  # scaffold plugins/short-name as wes.short-name
 ```
 
+## VS Code / qmlls
+
+`import qs.Commons` and `import qs.Ui` are Quickshell project imports from the Omarchy shell, not modules under `/usr/lib/qt6/qml`. The Qt QML extension only looks there unless you add an import path.
+
+This repo ships a URI-shaped shim at `.qml-modules/qs/{Commons,Ui}` pointing at `/usr/share/omarchy/shell`, plus `.vscode/settings.json` so qmlls gets `-I .qml-modules`. Reload the window after opening this folder (`Developer: Reload Window`).
+
+If you opened a QML file outside this workspace, add the same path in user settings:
+
+```json
+"qt-qml.qmlls.additionalImportPaths": [
+  "/home/wesgrimes/Work/omarchy-plugins/.qml-modules"
+]
+```
+
 ## Ground rules
 
 Keep these small. Add process only when a second plugin actually needs it.

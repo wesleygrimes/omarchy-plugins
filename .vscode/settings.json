@@ -1,0 +1,7 @@
+{
+  "qt-qml.qmlls.useNoCMakeCalls": true,
+  "qt-qml.qmlls.useQmlImportPathEnvVar": true,
+  "qt-qml.qmlls.additionalImportPaths": [
+    "${workspaceFolder}/.qml-modules"
+  ]
+}

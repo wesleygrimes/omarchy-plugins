@@ -4,7 +4,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+QMLLINT="${QMLLINT:-}"
 failed=0
+
+if [[ -z $QMLLINT ]]; then
+  for candidate in qmllint /usr/lib/qt6/bin/qmllint /usr/bin/qmllint6; do
+    if command -v "$candidate" >/dev/null 2>&1 || [[ -x $candidate ]]; then
+      QMLLINT="$candidate"
+      break
+    fi
+  done
+fi
 
 shopt -s nullglob
 plugins=("$ROOT"/plugins/*/)
@@ -19,11 +29,11 @@ for dir in "${plugins[@]}"; do
     failed=1
     continue
   fi
-  if command -v qmllint >/dev/null 2>&1 && [[ -d $OMARCHY_PATH/shell ]]; then
+  if [[ -n $QMLLINT && -d $ROOT/.qml-modules ]]; then
     qml=()
     while IFS= read -r -d '' f; do qml+=("$f"); done < <(find "$dir" -name '*.qml' -print0)
     if (( ${#qml[@]} > 0 )); then
-      qmllint -I "$OMARCHY_PATH/shell" "${qml[@]}" || failed=1
+      "$QMLLINT" -I "$ROOT/.qml-modules" "${qml[@]}" || failed=1
     fi
   fi
 done
