@@ -80,24 +80,82 @@ function filterStations(stations, query) {
 }
 
 function nearestWsr(stations, latitude, longitude) {
-  var best = null
-  var bestDistance = Infinity
+  var nearby = nearestStations(stations, latitude, longitude, 1)
+  return nearby.length ? nearby[0] : null
+}
+
+function distanceKm(lat1, lon1, lat2, lon2) {
+  if (!isFinite(lat1) || !isFinite(lon1) || !isFinite(lat2) || !isFinite(lon2)) return Infinity
+  var toRad = Math.PI / 180
+  var dLat = (lat2 - lat1) * toRad
+  var dLon = (lon2 - lon1) * toRad
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+    + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  return 12742 * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+function nearestStations(stations, latitude, longitude, limit) {
+  var cap = Math.max(1, parseInt(limit, 10) || 6)
+  var rows = []
   for (var i = 0; i < stations.length; i++) {
     var s = stations[i]
     if (!isWsr88d(s) || !isFinite(s.latitude) || !isFinite(s.longitude)) continue
-    if (!isFinite(latitude) || !isFinite(longitude)) {
-      if (!best) best = s
-      continue
-    }
-    var dLat = s.latitude - latitude
-    var dLon = s.longitude - longitude
-    var distance = dLat * dLat + dLon * dLon
-    if (distance < bestDistance) {
-      bestDistance = distance
-      best = s
-    }
+    var km = distanceKm(latitude, longitude, s.latitude, s.longitude)
+    if (!isFinite(km)) continue
+    rows.push({
+      id: s.id,
+      name: s.name,
+      state: s.state,
+      stationType: s.stationType,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      distanceKm: km,
+      distanceMi: km * 0.621371
+    })
   }
-  return best
+  rows.sort(function(a, b) { return a.distanceKm - b.distanceKm })
+  return rows.slice(0, cap)
+}
+
+function mergeSuggestions(named, nearby) {
+  var seen = {}
+  var out = []
+  function add(s) {
+    if (!s || !s.id || seen[s.id] || !isWsr88d(s)) return
+    seen[s.id] = true
+    out.push(s)
+  }
+  var i
+  for (i = 0; i < (named || []).length; i++) add(named[i])
+  for (i = 0; i < (nearby || []).length && out.length < 6; i++) add(nearby[i])
+  return out
+}
+
+function parseGeocodePoint(raw) {
+  try {
+    var results = JSON.parse(String(raw || "{}")).results || []
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i]
+      if (!r || r.latitude === undefined || r.longitude === undefined) continue
+      var region = [r.admin1, r.country].filter(function(part) { return !!part }).join(", ")
+      return {
+        name: String(r.name || ""),
+        region: region,
+        latitude: Number(r.latitude),
+        longitude: Number(r.longitude)
+      }
+    }
+  } catch (e) { /* keep empty */ }
+  return null
+}
+
+function suggestionDetail(station) {
+  var parts = []
+  if (station && station.name && station.name !== station.id) parts.push(station.name)
+  if (station && station.state) parts.push(station.state)
+  if (station && isFinite(station.distanceMi))
+    parts.push(Math.round(station.distanceMi) + " mi")
+  return parts.join(" · ")
 }
 
 function loopUrl(stationId, revision) {

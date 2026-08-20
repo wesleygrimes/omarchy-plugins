@@ -20,7 +20,7 @@ That places it in the center section, after the built-in weather widget.
 
 - Left click: open or close the popover
 - Middle click: refresh the loop
-- Click the station name: search NEXRAD (WSR-88D) sites by id or name
+- Click the station name: search by station id, site name, or city (nearest NEXRAD)
 - Scroll the loop: zoom toward the cursor
 - Drag when zoomed: pan
 - Double-click the loop, or `0`: reset zoom

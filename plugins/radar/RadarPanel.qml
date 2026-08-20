@@ -29,6 +29,8 @@ Panel {
   property bool loadingStations: false
   property bool editingStation: false
   property bool hasSavedStation: false
+  property string geocodePendingQuery: ""
+  property string geocodeActiveQuery: ""
   property real zoom: 1
   property real panX: 0
   property real panY: 0
@@ -127,10 +129,46 @@ Panel {
     editingStation = false
     searchText = ""
     suggestions = []
+    geocodePendingQuery = ""
+    geocodeActiveQuery = ""
+    nearbyDebounce.stop()
   }
 
   function updateSuggestions() {
     suggestions = Model.filterStations(stations, searchText)
+    requestNearbyStations()
+  }
+
+  function requestNearbyStations() {
+    var q = String(searchText || "").replace(/^\s+|\s+$/g, "")
+    if (q.length < 3) {
+      nearbyDebounce.stop()
+      return
+    }
+    var exact = Model.stationById(stations, q.toUpperCase())
+    if (exact && Model.isWsr88d(exact)) {
+      nearbyDebounce.stop()
+      return
+    }
+    nearbyDebounce.restart()
+  }
+
+  function startNearbyGeocode() {
+    var q = String(searchText || "").replace(/^\s+|\s+$/g, "")
+    if (q.length < 3) return
+    geocodePendingQuery = q
+    if (!geocodeProc.running) runNearbyGeocode()
+  }
+
+  function runNearbyGeocode() {
+    geocodeActiveQuery = geocodePendingQuery
+    geocodeProc.command = [
+      "curl", "-fsS", "--max-time", "5",
+      "https://geocoding-api.open-meteo.com/v1/search?name="
+        + encodeURIComponent(geocodeActiveQuery)
+        + "&count=3&language=en&format=json"
+    ]
+    geocodeProc.running = true
   }
 
   function persistStation() {
@@ -276,6 +314,33 @@ Panel {
     onTriggered: root.refresh()
   }
 
+  Timer {
+    id: nearbyDebounce
+    interval: 280
+    repeat: false
+    onTriggered: root.startNearbyGeocode()
+  }
+
+  Process {
+    id: geocodeProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var q = String(root.searchText || "").replace(/^\s+|\s+$/g, "")
+        if (root.geocodeActiveQuery !== q) {
+          if (root.geocodePendingQuery && root.geocodePendingQuery !== root.geocodeActiveQuery)
+            root.runNearbyGeocode()
+          return
+        }
+        var place = Model.parseGeocodePoint(text)
+        if (!place) return
+        var named = Model.filterStations(root.stations, root.searchText)
+        var nearby = Model.nearestStations(root.stations, place.latitude, place.longitude, 6)
+        root.suggestions = Model.mergeSuggestions(named, nearby)
+      }
+    }
+  }
+
   IpcHandler {
     target: root.ipcTarget
     function open(): void { root.openFromHotkey() }
@@ -357,7 +422,7 @@ Panel {
             anchors.right: parent.right
             foreground: root.fg
             font.family: root.fontFamily
-            placeholderText: "Station id or name"
+            placeholderText: "City, station, or id"
             text: root.searchText
             onVisibleChanged: if (visible) root.loadStations()
             onTextChanged: {
@@ -387,7 +452,7 @@ Panel {
         ListView {
           id: stationList
           width: parent.width
-          height: root.editingStation && root.suggestions.length ? Style.space(34) * Math.min(4, root.suggestions.length) : 0
+          height: root.editingStation && root.suggestions.length ? Style.space(34) * Math.min(5, root.suggestions.length) : 0
           visible: height > 0
           clip: true
           model: root.suggestions
@@ -417,7 +482,7 @@ Panel {
                 width: Style.space(52)
               }
               Text {
-                text: stationRow.modelData.name + (stationRow.modelData.state ? " (" + stationRow.modelData.state + ")" : "")
+                text: Model.suggestionDetail(stationRow.modelData)
                 color: stationRow.rowFg
                 font.family: root.fontFamily
                 elide: Text.ElideRight
