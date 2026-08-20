@@ -390,9 +390,14 @@ Panel {
             id: stationRow
             required property var modelData
             required property int index
+            readonly property bool active: ListView.view.currentIndex === index || mouse.containsMouse
+            readonly property color rowFg: active
+              ? Style.hoverStateColor(root.fg, Color.accent)
+              : root.fg
             width: ListView.view.width
             height: Style.space(34)
-            color: (ListView.view.currentIndex === index || mouse.containsMouse) ? Color.accent : "transparent"
+            radius: Style.cornerRadius
+            color: active ? Style.hoverFillFor(root.fg, Color.accent) : "transparent"
 
             Row {
               anchors.fill: parent
@@ -400,14 +405,14 @@ Panel {
               spacing: Style.space(10)
               Text {
                 text: stationRow.modelData.id
-                color: root.fg
+                color: stationRow.rowFg
                 font.family: root.fontFamily
                 font.bold: true
                 width: Style.space(52)
               }
               Text {
                 text: stationRow.modelData.name + (stationRow.modelData.state ? " (" + stationRow.modelData.state + ")" : "")
-                color: root.fg
+                color: stationRow.rowFg
                 font.family: root.fontFamily
                 elide: Text.ElideRight
                 width: parent.width - Style.space(62)
