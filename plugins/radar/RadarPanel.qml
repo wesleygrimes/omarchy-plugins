@@ -140,6 +140,15 @@ Panel {
   function applyResolvedStation() {
     var s = Model.stationById(stations, stationId)
     if (!s) return
+    var source = Model.loopSource(s, stations)
+    if (source && source.id !== stationId) {
+      stationId = source.id
+      stationName = source.name || source.id
+      label = source.id
+      persistStation()
+      refresh()
+      return
+    }
     var nextName = s.name || stationId
     if (nextName === stationName) return
     stationName = nextName
@@ -528,7 +537,7 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             text: root.errorText || (root.zoom > 1
               ? Model.zoomLabel(root.zoom) + " · drag to pan · double-click to reset"
-              : "NWS RIDGE loop · scroll to zoom")
+              : "NEXRAD loop · scroll to zoom")
             color: root.errorText ? Color.urgent : Color.muted
             font.family: root.fontFamily
             font.pixelSize: root.fontCaption

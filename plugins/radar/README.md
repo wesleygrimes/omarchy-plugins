@@ -32,8 +32,10 @@ The chosen station is stored in `~/.local/state/omarchy/settings/wes-radar.json`
 
 ## Data
 
-- Loop: `https://radar.weather.gov/ridge/standard/<STATION>_loop.gif`
+- Loop: `https://radar.weather.gov/ridge/standard/<STATION>_loop.gif` (WSR-88D only)
 - Stations: `https://api.weather.gov/radar/stations`
+
+Airport TDWR sites such as TTPA have no RIDGE loop. Search lists NEXRAD (WSR-88D) sites, and a TDWR pick is remapped to the nearest one (TTPA → KTBW Tampa).
 
 NWS asks that automated access send a User-Agent with contact info. The plugin does.
 

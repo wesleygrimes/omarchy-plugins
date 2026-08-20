@@ -63,15 +63,47 @@ function displayCode(name, id) {
   return code
 }
 
+function isWsr88d(station) {
+  return String(station && station.stationType || "").toUpperCase() === "WSR-88D"
+}
+
 function filterStations(stations, query) {
   var q = String(query || "").toLowerCase().replace(/^\s+|\s+$/g, "")
   var result = []
   for (var i = 0; i < stations.length && result.length < 6; i++) {
     var s = stations[i]
+    if (!isWsr88d(s)) continue
     var hay = (s.id + " " + s.name + " " + s.state).toLowerCase()
     if (!q || hay.indexOf(q) !== -1) result.push(s)
   }
   return result
+}
+
+function nearestWsr(stations, latitude, longitude) {
+  var best = null
+  var bestDistance = Infinity
+  for (var i = 0; i < stations.length; i++) {
+    var s = stations[i]
+    if (!isWsr88d(s) || !isFinite(s.latitude) || !isFinite(s.longitude)) continue
+    if (!isFinite(latitude) || !isFinite(longitude)) {
+      if (!best) best = s
+      continue
+    }
+    var dLat = s.latitude - latitude
+    var dLon = s.longitude - longitude
+    var distance = dLat * dLat + dLon * dLon
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = s
+    }
+  }
+  return best
+}
+
+function loopSource(station, stations) {
+  if (!station) return null
+  if (isWsr88d(station)) return station
+  return nearestWsr(stations, station.latitude, station.longitude) || station
 }
 
 function loopUrl(stationId, revision) {
