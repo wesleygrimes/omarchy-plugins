@@ -44,7 +44,10 @@ Panel {
   readonly property string fontFamily: Style.fontFamily
   readonly property int fontCaption: Style.fontToken("caption", Style.fontPx(0.833))
   readonly property int fontBody: Style.fontToken("body", Style.fontPx(1.0))
+  readonly property int fontDisplay: Style.fontToken("display", Style.fontPx(2.0))
   readonly property real radarHeight: Math.round(Style.space(380) * 550 / 600)
+  readonly property string stationTitle: Model.displayName(stationName, stationId)
+  readonly property string stationCode: Model.displayCode(stationName, stationId)
 
   function open() {
     openedFromHotkey = false
@@ -63,6 +66,7 @@ Panel {
   function showAndRefresh() {
     root.controller.show()
     configFile.reload()
+    root.loadStations()
     root.refresh()
   }
 
@@ -129,14 +133,28 @@ Panel {
     suggestions = Model.filterStations(stations, searchText)
   }
 
+  function persistStation() {
+    configFile.setText(JSON.stringify({ version: 1, station: stationId, name: stationName }, null, 2) + "\n")
+  }
+
+  function applyResolvedStation() {
+    var s = Model.stationById(stations, stationId)
+    if (!s) return
+    var nextName = s.name || stationId
+    if (nextName === stationName) return
+    stationName = nextName
+    persistStation()
+  }
+
   function chooseStation(s) {
     if (!s) return
     stationId = s.id
-    stationName = s.name
+    stationName = s.name || s.id
     label = s.id
     cancelEditingStation()
     resetZoom()
-    configFile.setText(JSON.stringify({ version: 1, station: stationId, name: stationName }, null, 2) + "\n")
+    persistStation()
+    applyResolvedStation()
     refresh()
   }
 
@@ -209,12 +227,14 @@ Panel {
       root.stationId = c.station
       root.stationName = c.name
       root.label = c.station
+      root.applyResolvedStation()
     }
     onLoadFailed: {
       root.hasSavedStation = false
       root.stationId = "KFCX"
       root.stationName = "KFCX"
       root.label = "KFCX"
+      root.applyResolvedStation()
     }
   }
 
@@ -228,7 +248,7 @@ Panel {
     command: [
       "curl", "-fsS", "--max-time", "12",
       "-H", "User-Agent: wes.radar-omarchy/0.1 (+https://github.com/wesleygrimes/omarchy-plugins)",
-      "https://api.weather.gov/radar/stations?limit=500"
+      "https://api.weather.gov/radar/stations"
     ]
     stdout: StdioCollector {
       waitForEnd: true
@@ -236,6 +256,7 @@ Panel {
         root.stations = Model.parseStations(text)
         root.loadingStations = false
         root.updateSuggestions()
+        root.applyResolvedStation()
         if (!root.stations.length) root.errorText = "Could not load NWS station list"
       }
     }
@@ -295,37 +316,30 @@ Panel {
 
         Item {
           width: parent.width
-          implicitHeight: Math.max(heroLabels.implicitHeight, search.implicitHeight)
+          implicitHeight: root.editingStation ? search.implicitHeight : hero.implicitHeight
 
-          Column {
-            id: heroLabels
+          PanelHero {
+            id: hero
             visible: !root.editingStation
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-
-            Text {
-              text: "RADAR"
-              color: root.fg
-              font.family: root.fontFamily
-              font.bold: true
-              font.pixelSize: root.fontCaption
-            }
-
-            Text {
-              width: parent.width
-              text: root.stationName + "  ·  " + root.stationId
-              color: root.fg
-              font.family: root.fontFamily
-              font.pixelSize: root.fontBody
-              elide: Text.ElideRight
+            width: parent.width
+            title: root.stationTitle
+            detail: root.stationCode
+            meta: "Change station"
+            foreground: root.fg
+            fontFamily: root.fontFamily
+            iconComponent: Component {
+              Text {
+                text: "󰐼"
+                color: root.fg
+                font.family: root.fontFamily
+                font.pixelSize: root.fontDisplay
+              }
             }
           }
 
           MouseArea {
-            anchors.fill: heroLabels
-            visible: heroLabels.visible
+            anchors.fill: hero
+            visible: hero.visible
             cursorShape: Qt.PointingHandCursor
             onClicked: root.startEditingStation()
           }
@@ -545,5 +559,8 @@ Panel {
     }
   }
 
-  Component.onCompleted: ensureDirsProc.running = true
+  Component.onCompleted: {
+    ensureDirsProc.running = true
+    root.loadStations()
+  }
 }

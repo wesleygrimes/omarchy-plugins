@@ -13,26 +13,54 @@ function parseConfig(raw) {
   }
 }
 
+function parseStationFeature(feature) {
+  if (!feature || typeof feature !== "object") return null
+  var p = feature.properties || {}
+  var id = String(p.stationIdentifier || p.id || "").toUpperCase().replace(/[^A-Z0-9]/g, "")
+  if (!id || id.length !== 4) return null
+  var coords = (feature.geometry && feature.geometry.coordinates) || []
+  var name = String(p.name || "").replace(/^\s+|\s+$/g, "")
+  return {
+    id: id,
+    name: name || id,
+    state: String(p.state || ""),
+    stationType: String(p.stationType || ""),
+    latitude: Number(coords.length > 1 ? coords[1] : p.latitude),
+    longitude: Number(coords.length > 0 ? coords[0] : p.longitude)
+  }
+}
+
 function parseStations(raw) {
   try {
-    var features = JSON.parse(String(raw || "{}")).features || []
+    var data = JSON.parse(String(raw || "{}"))
+    if (data && data.type === "Feature") {
+      var one = parseStationFeature(data)
+      return one ? [one] : []
+    }
+    var features = (data && data.features) || []
     var result = []
     for (var i = 0; i < features.length; i++) {
-      var p = features[i].properties || {}
-      var id = String(p.stationIdentifier || p.id || "").toUpperCase()
-      if (!id || id.length !== 4) continue
-      result.push({
-        id: id,
-        name: String(p.name || id),
-        state: String(p.state || ""),
-        latitude: Number(p.latitude),
-        longitude: Number(p.longitude)
-      })
+      var station = parseStationFeature(features[i])
+      if (station) result.push(station)
     }
     return result
   } catch (e) {
     return []
   }
+}
+
+function displayName(name, id) {
+  var code = String(id || "").toUpperCase()
+  var label = String(name || "").replace(/^\s+|\s+$/g, "")
+  if (!label || label.toUpperCase() === code) return code
+  return label
+}
+
+function displayCode(name, id) {
+  var code = String(id || "").toUpperCase()
+  var label = String(name || "").replace(/^\s+|\s+$/g, "")
+  if (!label || label.toUpperCase() === code) return ""
+  return code
 }
 
 function filterStations(stations, query) {
