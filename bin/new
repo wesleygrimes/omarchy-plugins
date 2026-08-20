@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Scaffold a bar-widget plugin under plugins/<short-name>.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fail() { echo "new: $*" >&2; exit 1; }
+
+short="${1:-}"
+[[ -n $short ]] || fail "usage: bin/new <short-name> [display-name]"
+[[ $short =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "short-name must be lowercase letters, digits, and dashes"
+[[ $short != *..* ]] || fail "invalid short-name"
+
+id="wes.$short"
+name="${2:-$(echo "$short" | sed 's/.*/\u&/')}"
+dir="$ROOT/plugins/$short"
+template="$ROOT/templates/bar-widget"
+[[ -d $template ]] || fail "missing template at $template"
+[[ ! -e $dir ]] || fail "already exists: $dir"
+
+mkdir -p "$dir"
+replace() {
+  sed -e "s|@ID@|$id|g" -e "s|@SHORT@|$short|g" -e "s|@NAME@|$name|g"
+}
+
+replace < "$template/manifest.json" > "$dir/manifest.json"
+replace < "$template/BarWidget.qml" > "$dir/BarWidget.qml"
+replace < "$template/Panel.qml" > "$dir/Panel.qml"
+replace < "$template/README.md" > "$dir/README.md"
+cp "$ROOT/LICENSE" "$dir/LICENSE"
+
+omarchy plugin validate "$dir"
+echo "created $dir (id $id)"
+echo "install with: bin/install $short --enable"

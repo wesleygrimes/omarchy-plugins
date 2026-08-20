@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Unlink plugins this checkout installed. Does not delete the repo.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="${OMARCHY_PLUGINS_DIR:-$HOME/.config/omarchy/plugins}"
+NAMES=()
+
+fail() { echo "uninstall: $*" >&2; exit 1; }
+
+while (( $# > 0 )); do
+  case "$1" in
+    -h|--help)
+      echo "Usage: bin/uninstall [plugin-folder ...]"
+      echo "With no folder names, unlinks every plugin from this checkout."
+      exit 0
+      ;;
+    -*) fail "unknown option: $1" ;;
+    *) NAMES+=("$1"); shift ;;
+  esac
+done
+
+if (( ${#NAMES[@]} == 0 )); then
+  shopt -s nullglob
+  for dir in "$ROOT"/plugins/*/; do
+    NAMES+=("$(basename "$dir")")
+  done
+  shopt -u nullglob
+fi
+
+for name in "${NAMES[@]}"; do
+  dir="$ROOT/plugins/$name"
+  [[ -f $dir/manifest.json ]] || fail "no plugin folder: $dir"
+  id="$(jq -r '.id' "$dir/manifest.json")"
+  target="$DEST/$id"
+  if [[ -L $target ]]; then
+    if command -v omarchy >/dev/null 2>&1; then
+      omarchy plugin disable "$id" >/dev/null 2>&1 || true
+    fi
+    rm "$target"
+    echo "unlinked $id"
+  elif [[ -e $target ]]; then
+    fail "$target exists and is not a symlink from this checkout"
+  else
+    echo "not installed: $id"
+  fi
+done
+
+if command -v omarchy-shell >/dev/null 2>&1; then
+  omarchy-shell shell rescanPlugins >/dev/null || true
+fi

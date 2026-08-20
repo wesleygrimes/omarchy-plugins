@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Link plugins from this checkout into ~/.config/omarchy/plugins.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="${OMARCHY_PLUGINS_DIR:-$HOME/.config/omarchy/plugins}"
+ENABLE=0
+NAMES=()
+
+fail() { echo "install: $*" >&2; exit 1; }
+
+while (( $# > 0 )); do
+  case "$1" in
+    --enable) ENABLE=1; shift ;;
+    -h|--help)
+      echo "Usage: bin/install [plugin-folder ...] [--enable]"
+      echo "With no folder names, installs every plugin under plugins/."
+      exit 0
+      ;;
+    -*) fail "unknown option: $1" ;;
+    *) NAMES+=("$1"); shift ;;
+  esac
+done
+
+mkdir -p "$DEST"
+
+plugin_dir() {
+  local name="$1"
+  local dir="$ROOT/plugins/$name"
+  [[ -d $dir ]] || fail "no plugin folder: $dir"
+  [[ -f $dir/manifest.json ]] || fail "missing manifest.json in $dir"
+  printf '%s\n' "$dir"
+}
+
+install_one() {
+  local dir="$1"
+  local id target
+  omarchy plugin validate "$dir" >/dev/null
+  id="$(jq -r '.id' "$dir/manifest.json")"
+  [[ -n $id && $id != null ]] || fail "manifest id is empty in $dir"
+  target="$DEST/$id"
+  if [[ -L $target ]]; then
+    rm "$target"
+  elif [[ -e $target ]]; then
+    fail "refusing to overwrite $target (not a symlink). Remove it first."
+  fi
+  ln -s "$dir" "$target"
+  echo "linked $id -> $target" >&2
+  printf '%s\n' "$id"
+}
+
+if (( ${#NAMES[@]} == 0 )); then
+  shopt -s nullglob
+  for dir in "$ROOT"/plugins/*/; do
+    NAMES+=("$(basename "$dir")")
+  done
+  shopt -u nullglob
+  (( ${#NAMES[@]} > 0 )) || fail "no plugins found under $ROOT/plugins"
+fi
+
+ids=()
+for name in "${NAMES[@]}"; do
+  ids+=("$(install_one "$(plugin_dir "$name")")")
+done
+
+if command -v omarchy-shell >/dev/null 2>&1; then
+  omarchy-shell shell rescanPlugins >/dev/null || true
+fi
+
+if (( ENABLE )); then
+  command -v omarchy >/dev/null 2>&1 || fail "omarchy is not on PATH"
+  for id in "${ids[@]}"; do
+    discovered=0
+    for (( attempt = 0; attempt < 40; attempt++ )); do
+      if omarchy plugin list --json | jq -e --arg id "$id" 'any(.[]; .id == $id)' >/dev/null; then
+        discovered=1
+        break
+      fi
+      sleep 0.05
+    done
+    (( discovered )) || fail "plugin '$id' is not known after rescan"
+    case "$id" in
+      wes.radar) omarchy plugin enable "$id" --section center --after omarchy.weather ;;
+      *) omarchy plugin enable "$id" ;;
+    esac
+  done
+fi

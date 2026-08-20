@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "wes.radar",
+  "name": "Radar",
+  "version": "0.1.0",
+  "author": "Wesley Grimes",
+  "license": "MIT",
+  "description": "NWS radar loop popover for the Omarchy bar.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Radar",
+    "description": "Current NWS RIDGE loop for a chosen WSR-88D station.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "center"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "@ID@",
+  "name": "@NAME@",
+  "version": "0.1.0",
+  "author": "Wesley Grimes",
+  "license": "MIT",
+  "description": "@NAME@ bar popover.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "@NAME@",
+    "description": "@NAME@ bar popover.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

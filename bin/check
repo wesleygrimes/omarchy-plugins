@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Validate every plugin folder against the Omarchy manifest contract.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+failed=0
+
+shopt -s nullglob
+plugins=("$ROOT"/plugins/*/)
+shopt -u nullglob
+(( ${#plugins[@]} > 0 )) || { echo "check: no plugins found" >&2; exit 1; }
+
+for dir in "${plugins[@]}"; do
+  dir="${dir%/}"
+  name="$(basename "$dir")"
+  echo "== $name"
+  if ! omarchy plugin validate "$dir"; then
+    failed=1
+    continue
+  fi
+  if command -v qmllint >/dev/null 2>&1 && [[ -d $OMARCHY_PATH/shell ]]; then
+    qml=()
+    while IFS= read -r -d '' f; do qml+=("$f"); done < <(find "$dir" -name '*.qml' -print0)
+    if (( ${#qml[@]} > 0 )); then
+      qmllint -I "$OMARCHY_PATH/shell" "${qml[@]}" || failed=1
+    fi
+  fi
+done
+
+exit "$failed"
