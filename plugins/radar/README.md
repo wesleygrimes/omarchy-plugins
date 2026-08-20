@@ -21,6 +21,10 @@ That places it in the center section, after the built-in weather widget.
 - Left click: open or close the popover
 - Middle click: refresh the loop
 - Click the station name: search by id, name, or state
+- Scroll the loop: zoom toward the cursor
+- Drag when zoomed: pan
+- Double-click the loop, or `0`: reset zoom
+- `+` / `-`: zoom in or out
 - Escape: close
 - Open map: full NWS viewer in the default browser
 

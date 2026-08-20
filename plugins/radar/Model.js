@@ -85,3 +85,36 @@ function stationById(stations, stationId) {
   }
   return null
 }
+
+function clampNumber(n, min, max) {
+  var v = Number(n)
+  if (!isFinite(v)) return min
+  return Math.max(min, Math.min(max, v))
+}
+
+function nextZoom(zoom, factor, minZoom, maxZoom) {
+  return clampNumber(Math.round(Number(zoom) * Number(factor) * 20) / 20, minZoom, maxZoom)
+}
+
+function panAfterZoom(zoom, next, panX, panY, originX, originY) {
+  if (!(Number(zoom) > 0)) return { panX: 0, panY: 0 }
+  var scale = Number(next) / Number(zoom)
+  return {
+    panX: originX - (originX - panX) * scale,
+    panY: originY - (originY - panY) * scale
+  }
+}
+
+function clampPan(zoom, panX, panY, viewW, viewH) {
+  if (!(Number(zoom) > 1)) return { panX: 0, panY: 0 }
+  var maxX = Math.max(0, (Number(viewW) * (Number(zoom) - 1)) / 2)
+  var maxY = Math.max(0, (Number(viewH) * (Number(zoom) - 1)) / 2)
+  return {
+    panX: clampNumber(panX, -maxX, maxX),
+    panY: clampNumber(panY, -maxY, maxY)
+  }
+}
+
+function zoomLabel(zoom) {
+  return Math.round(Number(zoom) * 100) + "%"
+}

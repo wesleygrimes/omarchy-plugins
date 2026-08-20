@@ -29,6 +29,16 @@ Panel {
   property bool loadingStations: false
   property bool editingStation: false
   property bool hasSavedStation: false
+  property real zoom: 1
+  property real panX: 0
+  property real panY: 0
+  property real wheelAccumulator: 0
+  property real dragPanX: 0
+  property real dragPanY: 0
+  property real dragStartX: 0
+  property real dragStartY: 0
+  readonly property real minZoom: 1
+  readonly property real maxZoom: 5
 
   readonly property color fg: root.barForeground
   readonly property string fontFamily: Style.fontFamily
@@ -61,6 +71,7 @@ Panel {
     root.editingStation = false
     root.searchText = ""
     root.suggestions = []
+    root.resetZoom()
     root.controller.hide()
   }
 
@@ -124,6 +135,7 @@ Panel {
     stationName = s.name
     label = s.id
     cancelEditingStation()
+    resetZoom()
     configFile.setText(JSON.stringify({ version: 1, station: stationId, name: stationName }, null, 2) + "\n")
     refresh()
   }
@@ -152,6 +164,39 @@ Panel {
   function openViewer() {
     Quickshell.execDetached(["omarchy-launch-browser", viewerUrl()])
   }
+
+  function resetZoom() {
+    zoom = 1
+    panX = 0
+    panY = 0
+    wheelAccumulator = 0
+  }
+
+  function applyPan(nextX, nextY) {
+    var clamped = Model.clampPan(zoom, nextX, nextY, radarViewport.width, radarViewport.height)
+    panX = clamped.panX
+    panY = clamped.panY
+  }
+
+  function zoomAt(factor, viewX, viewY) {
+    var next = Model.nextZoom(zoom, factor, minZoom, maxZoom)
+    if (next === zoom) {
+      applyPan(panX, panY)
+      return
+    }
+    var originX = Number(viewX) - radarViewport.width / 2
+    var originY = Number(viewY) - radarViewport.height / 2
+    var panned = Model.panAfterZoom(zoom, next, panX, panY, originX, originY)
+    zoom = next
+    applyPan(panned.panX, panned.panY)
+  }
+
+  function zoomBy(factor) {
+    zoomAt(factor, radarViewport.width / 2, radarViewport.height / 2)
+  }
+
+  function zoomIn() { zoomBy(1.2) }
+  function zoomOut() { zoomBy(1 / 1.2) }
 
   FileView {
     id: configFile
@@ -237,6 +282,9 @@ Panel {
       onActivateRequested: { if (root.editingStation) root.chooseSearchStation() }
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(t) {
+        if (t === "+" || t === "=") { root.zoomIn(); return }
+        if (t === "-" || t === "_") { root.zoomOut(); return }
+        if (t === "0") { root.resetZoom(); return }
         if (!root.editingStation) root.startEditingStation()
       }
 
@@ -362,6 +410,7 @@ Panel {
         }
 
         Rectangle {
+          id: radarViewport
           width: parent.width
           height: root.radarHeight
           color: Color.background
@@ -377,6 +426,18 @@ Panel {
             asynchronous: true
             cache: false
             playing: root.opened && status === Image.Ready
+            transform: [
+              Scale {
+                xScale: root.zoom
+                yScale: root.zoom
+                origin.x: radarImage.width / 2
+                origin.y: radarImage.height / 2
+              },
+              Translate {
+                x: root.panX
+                y: root.panY
+              }
+            ]
             onStatusChanged: {
               if (status === Image.Error)
                 root.errorText = "Could not load NWS radar loop"
@@ -385,12 +446,60 @@ Panel {
             }
           }
 
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton
+            cursorShape: root.zoom > 1
+              ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+              : Qt.ArrowCursor
+            onWheel: function(wheel) {
+              var result = Util.wheelSteps(root.wheelAccumulator, wheel.angleDelta.y)
+              root.wheelAccumulator = result.remainder
+              if (result.steps !== 0) {
+                var factor = result.steps > 0 ? Math.pow(1.2, result.steps) : Math.pow(1 / 1.2, -result.steps)
+                root.zoomAt(factor, wheel.x, wheel.y)
+              }
+              wheel.accepted = true
+            }
+            onPressed: function(mouse) {
+              root.dragStartX = mouse.x
+              root.dragStartY = mouse.y
+              root.dragPanX = root.panX
+              root.dragPanY = root.panY
+            }
+            onPositionChanged: function(mouse) {
+              if (!(mouse.buttons & Qt.LeftButton) || root.zoom <= 1) return
+              root.applyPan(root.dragPanX + (mouse.x - root.dragStartX), root.dragPanY + (mouse.y - root.dragStartY))
+            }
+            onDoubleClicked: root.resetZoom()
+          }
+
           Text {
             anchors.centerIn: parent
             visible: radarImage.status === Image.Loading || radarImage.status === Image.Null
             text: "Loading loop…"
             color: Color.muted
             font.family: root.fontFamily
+          }
+
+          Column {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: Style.space(6)
+            spacing: Style.space(4)
+
+            Button {
+              text: "+"
+              foreground: root.fg
+              onClicked: root.zoomIn()
+            }
+
+            Button {
+              text: "−"
+              foreground: root.fg
+              onClicked: root.zoomOut()
+            }
           }
         }
 
@@ -404,7 +513,9 @@ Panel {
             anchors.right: actionRow.left
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
-            text: root.errorText || "NWS RIDGE loop · click station to change"
+            text: root.errorText || (root.zoom > 1
+              ? Model.zoomLabel(root.zoom) + " · drag to pan · double-click to reset"
+              : "NWS RIDGE loop · scroll to zoom")
             color: root.errorText ? Color.urgent : Color.muted
             font.family: root.fontFamily
             font.pixelSize: root.fontCaption
